@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChatComponent } from './components/ChatComponent';
+import { PDFRAGComponent } from './components/PDFRAGComponent';
 
 // Main App component with TypeScript types
 function App(): JSX.Element {
@@ -17,27 +17,24 @@ function App(): JSX.Element {
         paddingBottom: '20px',
         borderBottom: '2px solid #f0f0f0'
       }}>
-        
-
-        
         <h1 style={{
           color: '#333',
           margin: '10px 0',
           fontSize: '28px',
           fontWeight: '600'
         }}>
-          🤖 TypeScript + React + LangChain
+          📄 PDF RAG Analyzer
         </h1>
         <p style={{
           color: '#666',
           fontSize: '16px',
           margin: '0'
         }}>
-          Learn TypeScript and LangChain with a simple chat interface
+          Upload PDF documents and get AI-powered summaries using LangChain RAG
         </p>
       </header>
 
-      <ChatComponent />
+      <PDFRAGComponent />
     </div>
   );
 }
