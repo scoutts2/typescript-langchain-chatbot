@@ -18,6 +18,10 @@ export default async function handler(req, res) {
     // Rate limiting: simple check (you can enhance this)
     const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     console.log(`Chat request from IP: ${clientIP}`);
+    
+    // Debug: Check if API key is loaded
+    console.log('API Key exists:', !!process.env.OPENAI_API_KEY);
+    console.log('API Key length:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0);
 
     // Initialize LangChain service with secure API key
     const model = new OpenAI({
@@ -49,6 +53,8 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Chat API Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     // Handle different types of errors
     if (error.message.includes('API key')) {
@@ -63,9 +69,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // Generic error response
+    // Return the actual error message for debugging
     res.status(500).json({ 
-      error: 'Something went wrong. Please try again.' 
+      error: `Backend error: ${error.message}` 
     });
   }
 }
