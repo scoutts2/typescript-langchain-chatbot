@@ -25,14 +25,24 @@ export const PDFRAGComponent: React.FC<PDFRAGComponentProps> = (): JSX.Element =
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.type === 'application/pdf') {
-        setSelectedFile(file);
-        setError('');
-        setSummary(null);
-      } else {
+      // Check file type
+      if (file.type !== 'application/pdf') {
         setError('Please select a PDF file.');
         setSelectedFile(null);
+        return;
       }
+
+      // Check file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        setError(`File too large! Please select a PDF smaller than 5MB. Current file: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        setSelectedFile(null);
+        return;
+      }
+
+      setSelectedFile(file);
+      setError('');
+      setSummary(null);
     }
   };
 
@@ -78,6 +88,11 @@ export const PDFRAGComponent: React.FC<PDFRAGComponentProps> = (): JSX.Element =
       });
 
       if (!response.ok) {
+        // Handle specific error codes
+        if (response.status === 413) {
+          throw new Error('File too large! Please select a PDF smaller than 5MB.');
+        }
+        
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to process PDF');
       }
@@ -227,7 +242,7 @@ export const PDFRAGComponent: React.FC<PDFRAGComponentProps> = (): JSX.Element =
       }}>
         <h4 style={{ marginBottom: '10px', color: '#495057' }}>💡 How it works:</h4>
         <ul style={{ margin: 0, paddingLeft: '20px' }}>
-          <li>Upload a PDF document (max 10MB recommended)</li>
+          <li>Upload a PDF document (max 5MB limit)</li>
           <li>LangChain extracts and processes the text</li>
           <li>AI creates chunks and embeddings for RAG</li>
           <li>Get a comprehensive summary of your document</li>

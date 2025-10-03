@@ -25,7 +25,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'PDF file is required' });
     }
 
-    console.log(`Processing PDF: ${fileName || 'unnamed'}`);
+    // Check base64 data size (roughly 1.33x larger than original file)
+    const base64Size = Buffer.byteLength(pdfData, 'utf8');
+    const estimatedFileSize = base64Size * 0.75; // Convert base64 to approximate original size
+    
+    if (estimatedFileSize > 5 * 1024 * 1024) { // 5MB limit
+      return res.status(413).json({ 
+        error: `File too large! Please upload a PDF smaller than 5MB. Estimated size: ${(estimatedFileSize / 1024 / 1024).toFixed(2)}MB` 
+      });
+    }
+
+    console.log(`Processing PDF: ${fileName || 'unnamed'} (estimated size: ${(estimatedFileSize / 1024 / 1024).toFixed(2)}MB)`);
 
     // Convert base64 PDF data to buffer
     const pdfBuffer = Buffer.from(pdfData, 'base64');
