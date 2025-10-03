@@ -1,6 +1,5 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { OpenAI } from "langchain/llms/openai";
 import { PromptTemplate } from "langchain/prompts";
-import { StringOutputParser } from "langchain/output_parsers";
 
 export default async function handler(req, res) {
   // Handle different HTTP methods
@@ -21,12 +20,10 @@ export default async function handler(req, res) {
     console.log(`Chat request from IP: ${clientIP}`);
 
     // Initialize LangChain service with secure API key
-    const model = new ChatOpenAI({
-      issuer: "openai",
-      project: process.env.OPENAI_PROJECT_ID,
+    const model = new OpenAI({
       modelName: "gpt-3.5-turbo",
       temperature: 0.7,
-      apiKey: process.env.OPENAI_API_KEY, // ← SECURE: Only on server
+      openAIApiKey: process.env.OPENAI_API_KEY, // ← SECURE: Only on server
     });
 
     // Create prompt template for learning-focused responses
@@ -34,13 +31,12 @@ export default async function handler(req, res) {
     Please answer this question in a simple, clear, and beginner-friendly way: {question}`;
     
     const prompt = PromptTemplate.fromTemplate(template);
-    const outputParser = new StringOutputParser();
-    const chain = prompt.pipe(model).pipe(outputParser);
-
-    // Get AI response
-    const response = await chain.invoke({
+    const formattedPrompt = await prompt.format({
       question: question.trim()
     });
+
+    // Get AI response using simpler API for v0.2.x
+    const response = await model.call(formattedPrompt);
 
     // Log the interaction (for monitoring usage)
     console.log(`Question: "${question.substring(0, 50)}..." | Response length: ${response.length} chars`);
