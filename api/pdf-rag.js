@@ -1,6 +1,4 @@
-import { ChatOpenAI } from "@langchain/openai";
-import { PromptTemplate } from "langchain/prompts";
-import { StringOutputParser } from "langchain/output_parsers";
+import OpenAI from 'openai';
 import pdf from "pdf-parse";
 
 export default async function handler(req, res) {
@@ -53,18 +51,16 @@ export default async function handler(req, res) {
       ? pdfText.substring(0, maxTextLength) + '... [text truncated]'
       : pdfText;
 
-    // Initialize the chat model
-    const model = new ChatOpenAI({
-      modelName: "gpt-3.5-turbo",
-      temperature: 0.7,
-      openAIApiKey: process.env.OPENAI_API_KEY,
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Create a prompt template for document summarization
-    const template = `You are an expert document analyst. Based on the following document content, provide a comprehensive summary.
+    // Create the prompt for document summarization
+    const prompt = `You are an expert document analyst. Based on the following document content, provide a comprehensive summary.
 
 Document Content:
-{context}
+${truncatedText}
 
 Please provide:
 1. A brief overview of the document
@@ -74,16 +70,20 @@ Please provide:
 
 Summary:`;
 
-    const prompt = PromptTemplate.fromTemplate(template);
-    const outputParser = new StringOutputParser();
-
-    // Create the chain
-    const chain = prompt.pipe(model).pipe(outputParser);
-
-    // Generate summary using the document text
-    const summary = await chain.invoke({
-      context: truncatedText
+    // Generate summary using OpenAI API directly
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
     });
+
+    const summary = completion.choices[0].message.content;
 
     console.log(`Generated summary of ${summary.length} characters`);
 
@@ -97,18 +97,18 @@ Summary:`;
     });
 
   } catch (error) {
-    console.error('PDF RAG Error:', error);
+    console.error('PDF Analysis Error:', error);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     
     // Handle different types of errors
-    if (error.message.includes('API key')) {
+    if (error.message.includes('API key') || error.message.includes('401')) {
       return res.status(500).json({ 
         error: 'AI service configuration error. Please contact support.' 
       });
     }
     
-    if (error.message.includes('rate limit')) {
+    if (error.message.includes('rate limit') || error.message.includes('429')) {
       return res.status(429).json({ 
         error: 'Too many requests. Please try again later.' 
       });
