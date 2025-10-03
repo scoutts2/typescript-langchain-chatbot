@@ -1,4 +1,6 @@
-import OpenAI from 'openai';
+import { ChatOpenAI } from "@langchain/openai";
+import { PromptTemplate } from "langchain/prompts";
+import { StringOutputParser } from "langchain/output_parsers";
 
 export default async function handler(req, res) {
   // Handle different HTTP methods
@@ -22,29 +24,27 @@ export default async function handler(req, res) {
     console.log('API Key exists:', !!process.env.OPENAI_API_KEY);
     console.log('API Key length:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0);
 
-    // Initialize OpenAI client
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    // Create prompt for learning-focused responses
-    const prompt = `You are a helpful assistant teaching TypeScript, React, and LangChain to beginners.
-    Please answer this question in a simple, clear, and beginner-friendly way: ${question.trim()}`;
-
-    // Get AI response using direct OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
+    // Initialize LangChain ChatOpenAI model
+    const model = new ChatOpenAI({
+      modelName: "gpt-3.5-turbo",
       temperature: 0.7,
-      max_tokens: 500
+      openAIApiKey: process.env.OPENAI_API_KEY,
     });
 
-    const response = completion.choices[0].message.content;
+    // Create prompt template for learning-focused responses
+    const template = `You are a helpful assistant teaching TypeScript, React, and LangChain to beginners.
+    Please answer this question in a simple, clear, and beginner-friendly way: {question}`;
+    
+    const prompt = PromptTemplate.fromTemplate(template);
+    const outputParser = new StringOutputParser();
+
+    // Create the chain: prompt -> model -> output parser
+    const chain = prompt.pipe(model).pipe(outputParser);
+
+    // Get AI response using LangChain
+    const response = await chain.invoke({
+      question: question.trim()
+    });
 
     // Log the interaction (for monitoring usage)
     console.log(`Question: "${question.substring(0, 50)}..." | Response length: ${response.length} chars`);
