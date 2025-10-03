@@ -1,4 +1,9 @@
-import OpenAI from 'openai';
+import { ChatOpenAI } from "@langchain/openai";
+import { PromptTemplate } from "langchain/prompts";
+import { StringOutputParser } from "langchain/output_parsers";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { OpenAIEmbeddings } from "@langchain/openai";
 import pdf from "pdf-parse";
 
 export default async function handler(req, res) {
@@ -45,22 +50,40 @@ export default async function handler(req, res) {
 
     console.log(`Extracted ${pdfText.length} characters from PDF`);
 
-    // Truncate text if too long (to avoid token limits)
-    const maxTextLength = 8000; // Conservative limit for GPT-3.5-turbo
-    const truncatedText = pdfText.length > maxTextLength 
-      ? pdfText.substring(0, maxTextLength) + '... [text truncated]'
-      : pdfText;
-
-    // Initialize OpenAI client
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+    // Split the text into chunks for RAG
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
     });
 
-    // Create the prompt for document summarization
-    const prompt = `You are an expert document analyst. Based on the following document content, provide a comprehensive summary.
+    const chunks = await textSplitter.splitText(pdfText);
+    console.log(`Created ${chunks.length} text chunks`);
+
+    // Create embeddings and vector store
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const vectorStore = await MemoryVectorStore.fromTexts(
+      chunks,
+      {},
+      embeddings
+    );
+
+    console.log(`Created vector store with ${chunks.length} embeddings`);
+
+    // Initialize the chat model
+    const model = new ChatOpenAI({
+      modelName: "gpt-3.5-turbo",
+      temperature: 0.7,
+      openAIApiKey: process.env.OPENAI_API_KEY,
+    });
+
+    // Create a prompt template for document summarization
+    const template = `You are an expert document analyst. Based on the following document content, provide a comprehensive summary.
 
 Document Content:
-${truncatedText}
+{context}
 
 Please provide:
 1. A brief overview of the document
@@ -70,20 +93,19 @@ Please provide:
 
 Summary:`;
 
-    // Generate summary using OpenAI API directly
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+    const prompt = PromptTemplate.fromTemplate(template);
+    const outputParser = new StringOutputParser();
 
-    const summary = completion.choices[0].message.content;
+    // Create the chain
+    const chain = prompt.pipe(model).pipe(outputParser);
+
+    // Get all chunks as context (for summarization, we use all content)
+    const allChunks = chunks.join('\n\n');
+
+    // Generate summary using RAG
+    const summary = await chain.invoke({
+      context: allChunks
+    });
 
     console.log(`Generated summary of ${summary.length} characters`);
 
@@ -92,23 +114,23 @@ Summary:`;
       summary: summary,
       fileName: fileName || 'Document',
       textLength: pdfText.length,
-      chunksCount: 1, // Simplified - no chunking for now
+      chunksCount: chunks.length,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('PDF Analysis Error:', error);
+    console.error('PDF RAG Error:', error);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     
     // Handle different types of errors
-    if (error.message.includes('API key') || error.message.includes('401')) {
+    if (error.message.includes('API key')) {
       return res.status(500).json({ 
         error: 'AI service configuration error. Please contact support.' 
       });
     }
     
-    if (error.message.includes('rate limit') || error.message.includes('429')) {
+    if (error.message.includes('rate limit')) {
       return res.status(429).json({ 
         error: 'Too many requests. Please try again later.' 
       });

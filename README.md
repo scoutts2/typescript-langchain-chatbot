@@ -1,15 +1,16 @@
-# PDF Document Analyzer
+# PDF RAG Analyzer
 
-A powerful web application that analyzes PDF documents and provides AI-powered summaries using OpenAI's GPT models.
+A powerful web application that uses **LangChain RAG (Retrieval-Augmented Generation)** to analyze PDF documents and provide AI-powered summaries.
 
 ## 🎯 What This App Does
 
-This application demonstrates **AI document processing** by:
+This application demonstrates advanced **LangChain RAG concepts** by:
 - **Uploading PDF documents** from your device
 - **Extracting text** using PDF parsing
-- **Generating comprehensive summaries** using OpenAI GPT
-- **Handling file uploads** and size validation
-- **Providing real-time feedback** during processing
+- **Creating text chunks** with intelligent splitting
+- **Generating embeddings** with OpenAI
+- **Building vector stores** for semantic search
+- **Generating comprehensive summaries** using RAG
 
 ## 🚀 Key LangChain Concepts You'll Learn
 
