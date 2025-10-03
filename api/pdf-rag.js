@@ -1,9 +1,6 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "langchain/prompts";
 import { StringOutputParser } from "langchain/output_parsers";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import { OpenAIEmbeddings } from "@langchain/openai";
 import pdf from "pdf-parse";
 
 export default async function handler(req, res) {
@@ -50,24 +47,11 @@ export default async function handler(req, res) {
 
     console.log(`Extracted ${pdfText.length} characters from PDF`);
 
-    // Split the text into chunks for RAG
-    const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 200,
-    });
-
-    const chunks = await textSplitter.splitText(pdfText);
-
-    // Create embeddings and vector store
-    const embeddings = new OpenAIEmbeddings({
-      openAIApiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const vectorStore = await MemoryVectorStore.fromTexts(
-      chunks,
-      {},
-      embeddings
-    );
+    // Truncate text if too long (to avoid token limits)
+    const maxTextLength = 8000; // Conservative limit for GPT-3.5-turbo
+    const truncatedText = pdfText.length > maxTextLength 
+      ? pdfText.substring(0, maxTextLength) + '... [text truncated]'
+      : pdfText;
 
     // Initialize the chat model
     const model = new ChatOpenAI({
@@ -96,12 +80,9 @@ Summary:`;
     // Create the chain
     const chain = prompt.pipe(model).pipe(outputParser);
 
-    // Get all chunks as context (for summarization, we use all content)
-    const allChunks = chunks.join('\n\n');
-
-    // Generate summary using RAG
+    // Generate summary using the document text
     const summary = await chain.invoke({
-      context: allChunks
+      context: truncatedText
     });
 
     console.log(`Generated summary of ${summary.length} characters`);
@@ -111,7 +92,7 @@ Summary:`;
       summary: summary,
       fileName: fileName || 'Document',
       textLength: pdfText.length,
-      chunksCount: chunks.length,
+      chunksCount: 1, // Simplified - no chunking for now
       timestamp: new Date().toISOString()
     });
 
