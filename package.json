@@ -1,0 +1,28 @@
+{
+  "name": "typescript-react-langchain-app",
+  "version": "1.0.0",
+  "description": "A simple TypeScript + React + LangChain learning project",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["typescript", "langchain", "react", "vite", "learning"],
+  "author": "Learning TypeScript & LangChain",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "langchain": "^0.39.0",
+    "@langchain/openai": "^0.39.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.19"
+  }
+}
